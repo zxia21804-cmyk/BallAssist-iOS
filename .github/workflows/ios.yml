@@ -1,5 +1,5 @@
 
-name: Build iOS App
+name: Build iPhone App
 
 on:
   workflow_dispatch:
@@ -21,21 +21,30 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
-      - name: Build iOS Simulator
+      - name: Build iPhone device app
         run: |
+          set -o pipefail
           xcodebuild \
             -project BallAssist.xcodeproj \
             -scheme BallAssist \
-            -sdk iphonesimulator \
+            -sdk iphoneos \
             -configuration Debug \
-            -destination 'generic/platform=iOS Simulator' \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/DerivedData \
             CODE_SIGNING_ALLOWED=NO \
-            build
+            build | tee build.log
 
-      - name: Upload build log
-        if: always()
+      - name: Package unsigned app
+        run: |
+          mkdir -p Payload
+          cp -R build/DerivedData/Build/Products/Debug-iphoneos/*.app Payload/
+          cd Payload
+          zip -r ../BallAssist-unsigned.ipa .
+
+      - name: Upload iPhone build
         uses: actions/upload-artifact@v4
         with:
-          name: ios-build-log
-          path: build.log
-          if-no-files-found: ignore
+          name: BallAssist-iPhone-unsigned
+          path: |
+            BallAssist-unsigned.ipa
+            build.log
